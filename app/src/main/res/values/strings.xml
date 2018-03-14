@@ -1,5 +1,14 @@
 <resources>
     <string name="app_name">Pokedex</string>
-    <string name="pokedex_entry">Pokedex Entry</string>
+    <string name="pokedex_entry">Pokedex No.</string>
     <string name="pokemon_name">Pokemon</string>
+    <string name="pokemon_type">Type</string>
+    <string name="pokemon_gen">Generation</string>
+    <string name="pokemon_hp">HP</string>
+    <string name="pokemon_atk">Attack</string>
+    <string name="pokemon_def">Defense</string>
+    <string name="pokemon_spatk">Sp.Atk</string>
+    <string name="pokemon_spdef">Sp.Def</string>
+    <string name="pokemon_spe">Speed</string>
+    <string name="pokemon_stats">Stats</string>
 </resources>
