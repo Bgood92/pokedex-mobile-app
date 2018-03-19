@@ -2,6 +2,7 @@ package ca.bgoodfellow.pokedex;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -28,8 +29,8 @@ public class MainActivity extends AppCompatActivity {
 
         lvPokemon = findViewById(R.id.lvPokemon);
 
+        //For debugging only
         pokemonList = new ArrayList<>();
-
         generatePokemon(pokemonList);
 
         pokemonAdapter = new PokemonAdapter(this, R.layout.list_item, pokemonList);
@@ -72,13 +73,16 @@ public class MainActivity extends AppCompatActivity {
     {
         pokemonList.add(new Pokemon("Bulbasaur", "Grass", "Poison", 1, 1, 11,11,11,11,11,11));
         pokemonList.add(new Pokemon("Ivysaur", "Grass", "Poison", 2, 1, 11,11,11,11,11,11));
-        pokemonList.add(new Pokemon("Veuasaur", "Grass", "Poison", 3, 1, 11,11,11,11,11,11));
+        pokemonList.add(new Pokemon("Venusaur", "Grass", "Poison", 3, 1, 11,11,11,11,11,11));
         pokemonList.add(new Pokemon("Charmander", "Fire", null, 4, 1, 11,11,11,11,11,11));
         pokemonList.add(new Pokemon("Charmeleon", "Fire", null, 5, 1, 11,11,11,11,11,11));
         pokemonList.add(new Pokemon("Charizard", "Fire", "Flying", 6, 1, 11,11,11,11,11,11));
         pokemonList.add(new Pokemon("Squirtle", "Water", null, 7, 1, 11,11,11,11,11,11));
         pokemonList.add(new Pokemon("Wartortle", "Water", null, 8, 1, 11,11,11,11,11,11));
         pokemonList.add(new Pokemon("Blastoise", "Water", null, 9, 1, 11,11,11,11,11,11));
+        pokemonList.add(new Pokemon("Caterpie", "Bug", null, 10, 1, 11,11,11,11,11,11));
+        pokemonList.add(new Pokemon("Metapod", "Bug", null, 11, 1, 11,11,11,11,11,11));
+        pokemonList.add(new Pokemon("Butterfree", "Bug", "Flying", 12, 1, 11,11,11,11,11,11));
     }
 
     //!-------------------------Inner Classes-----------------------------!

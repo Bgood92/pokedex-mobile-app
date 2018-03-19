@@ -2,12 +2,14 @@ package ca.bgoodfellow.pokedex;
 
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 public class PokemonActivity extends AppCompatActivity {
     private TextView tvEntryResult, tvNameResult, tvTypeResult, tvGenResult,
                     tvHPResult, tvAtkResult, tvDefResult,
                     tvSpAtkResult, tvSpDefResult, tvSpeResult;
+    private ImageView ivPokeball;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -24,6 +26,7 @@ public class PokemonActivity extends AppCompatActivity {
         tvSpAtkResult = findViewById(R.id.tvSpAtkResult);
         tvSpDefResult = findViewById(R.id.tvSpDefResult);
         tvSpeResult = findViewById(R.id.tvSpeResult);
+
 
         String entry = getIntent().getStringExtra("entry");
         String name = getIntent().getStringExtra("name");

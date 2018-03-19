@@ -10,10 +10,10 @@
         android:id="@+id/tvEntryResult"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/imageView"
-        android:layout_toStartOf="@+id/imageView"
+        android:layout_above="@+id/ivPokeball"
+        android:layout_toStartOf="@+id/ivPokeball"
         android:text="TextView"
-        android:layout_marginRight="4sp"
+        android:layout_marginRight="5sp"
         android:textAlignment="textEnd"
         android:textSize="24sp" />
 
@@ -28,19 +28,19 @@
         android:textSize="24sp" />
 
     <ImageView
-        android:id="@+id/imageView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:id="@+id/ivPokeball"
+        android:layout_width="180sp"
+        android:layout_height="180sp"
         android:layout_below="@+id/tvNameResult"
         android:layout_marginTop="8dp"
         android:layout_centerHorizontal="true"
-        app:srcCompat="@drawable/ic_launcher_background" />
+        app:srcCompat="@drawable/pokeball" />
 
     <TextView
         android:id="@+id/textView2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/imageView"
+        android:layout_below="@+id/ivPokeball"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="8dp"
         android:text="@string/pokemon_type"
