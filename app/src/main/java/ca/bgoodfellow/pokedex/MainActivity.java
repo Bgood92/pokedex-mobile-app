@@ -2,11 +2,9 @@ package ca.bgoodfellow.pokedex;
 
 import android.content.Context;
 import android.content.Intent;
-import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,6 +24,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        DatabaseHelper dbHelper = new DatabaseHelper(this);
+        dbHelper.insert();
 
         lvPokemon = findViewById(R.id.lvPokemon);
 
