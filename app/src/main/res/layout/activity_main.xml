@@ -33,4 +33,13 @@
         android:layout_height="match_parent"
         android:layout_alignStart="@+id/textView5"
         android:layout_below="@+id/textView5" />
+
+    <Button
+        android:id="@+id/btnLoadData"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/textView6"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="32dp"
+        android:text="Button" />
 </RelativeLayout>

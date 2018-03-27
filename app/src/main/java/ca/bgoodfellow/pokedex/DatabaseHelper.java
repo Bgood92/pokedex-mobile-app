@@ -14,6 +14,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -23,7 +24,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     //Database name and version number
     //Change the following values if the database name or version number changes
     private static final String DATABASE_NAME = "Pokedex";
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 5;
 
     /*
      * Below are SQL Strings used to create the following tables
@@ -40,8 +41,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String PKN_SP_ATK = "SpecialAttack";
     private static final String PKN_SP_DEF = "SpecialDefense";
     private static final String PKN_SPEED = "Speed";
-    private static final String PKN_GEN_ID = "GenerationId";
-    private static final String PKN_TYPE_ID = "TypeId";
 
     //Type table
     private static final String TYPE_TABLE_NAME = "Type";
@@ -49,9 +48,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String TYPE_NAME = "Name";
 
     //Generation table
-    private static final String GENERATION_TABLE_NAME = "Generation";
-    private static final String GEN_NUMBER = "GenerationNumber";
-    private static final String GEN_REGION = "Region";
+//    private static final String GENERATION_TABLE_NAME = "Generation";
+//    private static final String GEN_NUMBER = "GenerationNumber";
+//    private static final String GEN_REGION = "Region";
 
     //PokemonType table (join table between Pokemon and Type)
     //Primary keys for this table will be the Pokemon entry and
@@ -73,16 +72,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             TYPE_ID + " INTEGER NOT NULL PRIMARY KEY, " +
             TYPE_NAME + " TEXT NOT NULL )";
 
-    private static final String CREATE_GENERATION_TABLE = "CREATE TABLE " + GENERATION_TABLE_NAME + "(" +
-            GEN_NUMBER + " INTEGER NOT NULL PRIMARY KEY, " +
-            GEN_REGION + " TEXT ";
+//    private static final String CREATE_GENERATION_TABLE = "CREATE TABLE " + GENERATION_TABLE_NAME + "(" +
+//            GEN_NUMBER + " INTEGER NOT NULL PRIMARY KEY, " +
+//            GEN_REGION + " TEXT ";
 
-    private static final String CREATE_POKEMON_TYPE_TABLE = "CREATE TABLE " + POKEMON_TYPE_TABLE_NAME + "(" +
+    private static final String CREATE_POKEMON_TYPE_TABLE = "CREATE TABLE " + POKEMON_TYPE_TABLE_NAME + "( " +
             PKN_ENTRY + " INTEGER NOT NULL, " +
             TYPE_ID + " INTEGER NOT NULL, " +
             "PRIMARY KEY(" + PKN_ENTRY + "," + TYPE_ID + "), " +
             "FOREIGN KEY(" + PKN_ENTRY + ") REFERENCES " + POKEMON_TABLE_NAME + "(" + PKN_ENTRY + "), " +
-            "FOREIGN KEY(" + TYPE_ID + ") REFERENCES " + TYPE_TABLE_NAME + "(" + TYPE_ID + ")";
+            "FOREIGN KEY(" + TYPE_ID + ") REFERENCES " + TYPE_TABLE_NAME + "(" + TYPE_ID + "))";
 
     /*
      * The following constants are only to be changed when Pokemon are added
@@ -90,15 +89,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
      */
     private static final int NUMBER_OF_POKEMON = 802;
     private static final int NUMBER_OF_TYPES = 18;
-    private static final int NUMBER_OF_GENERATIONS = 7;
-    private String url;
+
+    private PokemonHttpHandler pokemonHandler;
+    private int pokemonNumber = 1;
+    private String typeUrl = "https://pokeapi.co/api/v2/type/";
+    private String pokemonURL = "https://pokeapi.co/api/v2/pokemon/";
 
     /*
      * Drop table statements for all tables
      */
     private static final String DROP_POKEMON_TABLE = "DROP TABLE " + POKEMON_TABLE_NAME;
     private static final String DROP_TYPE_TABLE = "DROP TABLE " + TYPE_TABLE_NAME;
-    private static final String DROP_GEN_TABLE = "DROP TABLE " + GENERATION_TABLE_NAME;
+    //private static final String DROP_GEN_TABLE = "DROP TABLE " + GENERATION_TABLE_NAME;
     private static final String DROP_POKEMON_TYPE_TABLE = "DROP TABLE " + POKEMON_TYPE_TABLE_NAME;
 
     public DatabaseHelper(Context context) {
@@ -108,15 +110,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         //Creates the following tables in a local database
-        db.execSQL(CREATE_GENERATION_TABLE);
         db.execSQL(CREATE_TYPE_TABLE);
         db.execSQL(CREATE_POKEMON_TABLE);
-        db.execSQL(CREATE_TYPE_TABLE);
+        db.execSQL(CREATE_POKEMON_TYPE_TABLE);
 
         //Calls a method to asyncronously fetch data from an online API and insert
         //the retrieved data into the approprate tables
         insert();
-
     }
 
     @Override
@@ -125,36 +125,87 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         //Drop all tables and call the onCreate method to recreate the database
         db.execSQL(DROP_POKEMON_TYPE_TABLE);
         db.execSQL(DROP_POKEMON_TABLE);
-        db.execSQL(DROP_GEN_TABLE);
+        //db.execSQL(DROP_GEN_TABLE);
         db.execSQL(DROP_TYPE_TABLE);
         onCreate(db);
     }
 
-    public void insert() {
-        OkHttpHandler handler = new OkHttpHandler();
+    public ArrayList<Pokemon> loadData()
+    {
+        ArrayList<Pokemon> pokemon = new ArrayList<>();
 
-        url = "https://pokeapi.co/api/v2/type/";
-        handler.execute(url);
+        SQLiteDatabase db = this.getReadableDatabase();
 
-        handler = new OkHttpHandler();
+        String[] pokemonSelection = { PKN_ENTRY, PKN_NAME, PKN_HP, PKN_ATK, PKN_DEF, PKN_SP_ATK, PKN_SP_DEF, PKN_SPEED};
 
-        url = "https://pokeapi.co/api/v2/region/";
-        handler.execute(url);
+        Cursor pokemonCursor = db.query(POKEMON_TABLE_NAME, pokemonSelection, null, null, null, null, null);
 
-        for (int i = 1; i <= NUMBER_OF_POKEMON; i++) {
-            url = "https://pokeapi.co/api/v2/pokemon/" + i;
-            handler = new OkHttpHandler();
-            handler.execute(url);
+        pokemonCursor.moveToFirst();
+
+        int entry;
+        String name;
+        int hp, atk, def, spAtk, spDef, speed;
+        String[] queryArgs = new String[1];
+        String query =  "SELECT t.Name" +
+                        " FROM Pokemon p JOIN PokemonType pt ON p.PokedexEntry = pt.PokedexEntry" +
+                        " JOIN Type t ON pt.TypeId = t.TypeId" +
+                        " AND p.Name = ?";
+
+        for (int i = 0; i < pokemonCursor.getCount(); i++) {
+            entry = pokemonCursor.getInt(0);
+            name = pokemonCursor.getString(1);
+            hp = pokemonCursor.getInt(2);
+            atk = pokemonCursor.getInt(3);
+            def = pokemonCursor.getInt(4);;
+            spAtk = pokemonCursor.getInt(5);
+            spDef = pokemonCursor.getInt(6);
+            speed = pokemonCursor.getInt( 7);
+
+            queryArgs[0] = name;
+            Cursor typeCursor = db.rawQuery(query, queryArgs);
+
+            String[] types = new String[typeCursor.getCount()];
+
+            typeCursor.moveToFirst();
+
+            for (int j = 0; j < typeCursor.getCount(); j++) {
+                types[j] = typeCursor.getString(0);
+                typeCursor.moveToNext();
+            }
+            pokemon.add(new Pokemon(name, types, entry, hp, atk, def, spAtk, spDef, speed));
+
+            pokemonCursor.moveToNext();
         }
+
+        db.close();
+        return pokemon;
     }
 
-    public class OkHttpHandler extends AsyncTask {
+    public void insert() {
+        TypeHttpHandler typeHandler = new TypeHttpHandler();
+
+        typeHandler.execute(typeUrl);
+
+        //PokemonHttpHandler pokemonHandler;
+
+        pokemonHandler = new PokemonHttpHandler();
+        pokemonHandler.execute(pokemonURL);
+
+//        for (int i = 1; i <= NUMBER_OF_POKEMON; i++) {
+//            url = "https://pokeapi.co/api/v2/pokemon/" + i;
+//            pokemonHandler = new PokemonHttpHandler();
+//            pokemonHandler.execute(url);
+        //}
+    }
+
+    class PokemonHttpHandler extends AsyncTask {
         OkHttpClient client = new OkHttpClient();
 
         @Override
         protected String doInBackground(Object[] params) {
             Request.Builder builder = new Request.Builder();
-            builder.url(params[0].toString());
+            builder.url(pokemonURL + pokemonNumber);
+            //builder.url(params[0].toString());
             Request request = builder.build();
 
             try {
@@ -170,17 +221,71 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         protected void onPostExecute(Object o) {
             super.onPostExecute(o);
 
-            if (url.contains("https://pokeapi.co/api/v2/pokemon")) {
+            if (o != null && pokemonNumber <= 151)
+            {
                 parsePokemonResponse(o.toString());
-            }
 
-            if (url.contains("https://pokeapi.co/api/v2/type")) {
+                pokemonNumber++;
+
+                pokemonHandler = new PokemonHttpHandler();
+                pokemonHandler.execute(pokemonURL);
+            }
+        }
+    }
+
+    class TypeHttpHandler extends AsyncTask {
+        OkHttpClient client = new OkHttpClient();
+
+        @Override
+        protected String doInBackground(Object[] params) {
+            Request.Builder builder = new Request.Builder();
+            builder.url(typeUrl);
+            Request request = builder.build();
+
+            try {
+                Response response = client.newCall(request).execute();
+                return response.body().string();
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Object o) {
+            super.onPostExecute(o);
+
+            if (o != null)
                 parseTypeResponse(o.toString());
+
+        }
+    }
+
+    private void parseTypeResponse(String response) {
+        try {
+            JSONObject json = new JSONObject(response);
+
+            String[] typeList = new String[NUMBER_OF_TYPES];
+
+            for (int i = 0; i < typeList.length; i++) {
+                typeList[i] = json.getJSONArray("results").getJSONObject(i).getString("name");
             }
 
-            if (url.contains("https://pokeapi.co/api/v2/region")) {
-                parseRegionResponse(o.toString());
+            SQLiteDatabase db = this.getWritableDatabase();
+
+            ContentValues insertValues;
+
+            for (int i = 0; i < typeList.length; i++) {
+                insertValues = new ContentValues();
+                insertValues.put(TYPE_ID, i+1);
+                insertValues.put(TYPE_NAME, typeList[i]);
+                db.insert(TYPE_TABLE_NAME, null, insertValues);
             }
+
+            db.close();
+
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
     }
 
@@ -188,35 +293,25 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         try{
             JSONObject json = new JSONObject(response);
 
-            String name = json.getJSONArray("forms").getJSONObject(0).getString("name");
-
-            int entry = json.getInt("id");
-
             JSONArray stats = json.getJSONArray("stats");
 
             JSONArray types = json.getJSONArray("types");
 
-            String[] typesList;
+            String name = json.getJSONArray("forms").getJSONObject(0).getString("name");
 
-            if (types.length() > 1) {
-                typesList = new String[2];
-                for (int i = 0; i < types.length() ; i++) {
-                    typesList[i] = types.getJSONObject(i).getJSONObject("type").getString("name");
-                }
-            }
-            else {
-                typesList = new String[1];
-                typesList[0] = types.getJSONObject(0).getJSONObject("type").getString("name");
-            }
+            int entry = json.getInt("id");
+
+            ArrayList<String> typesList = new ArrayList<>();
 
             int[] statsList = new int[6];
 
-            SQLiteDatabase writableDB = this.getWritableDatabase();
+            for (int i = 0; i < types.length() ; i++) {
+                typesList.add(types.getJSONObject(i).getJSONObject("type").getString("name"));
+            }
 
             for (int i = 0; i < statsList.length; i++) {
                 statsList[i] = stats.getJSONObject(i).getInt("base_stat");
             }
-
             ContentValues insertValues = new ContentValues();
 
             insertValues.put(PKN_ENTRY, entry);
@@ -228,19 +323,44 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             insertValues.put(PKN_ATK, statsList[4]);
             insertValues.put(PKN_HP, statsList[5]);
 
+            SQLiteDatabase writableDB = this.getWritableDatabase();
+
             writableDB.insert(POKEMON_TABLE_NAME, null, insertValues);
 
             SQLiteDatabase readableDB = this.getReadableDatabase();
 
             String[] selection = { TYPE_ID };
+            String[] typesArray;
 
-            Cursor c = readableDB.query(TYPE_TABLE_NAME,
-                                        selection,
-                                        TYPE_NAME,
-                                        typesList,
-                                        null,
-                                        null,
-                                        TYPE_ID);
+            if (typesList.size() > 1)
+            {
+                typesArray = new String[2];
+            }
+            else
+            {
+                typesArray = new String[1];
+            }
+
+            for (int i = 0; i < typesList.size(); i++) {
+                typesArray[i] = typesList.get(i);
+            }
+
+            Cursor c;
+
+            if (typesList.size() > 1) {
+                c = readableDB.query(TYPE_TABLE_NAME,
+                                     selection,
+                                     "Name IN (?,?)",
+                                     typesArray,
+                                     null, null, null);
+            }
+            else {
+                c = readableDB.query(TYPE_TABLE_NAME,
+                        selection,
+                        "Name IN (?)",
+                        typesArray,
+                        null, null, null);
+            }
 
             c.moveToFirst();
 
@@ -257,49 +377,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
             writableDB.close();
             readableDB.close();
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void parseTypeResponse(String response) {
-        try{
-            JSONObject json = new JSONObject(response);
-
-            String[] typeList = new String[NUMBER_OF_TYPES];
-
-            SQLiteDatabase db = this.getWritableDatabase();
-
-            ContentValues insertValues = new ContentValues();
-
-            for (int i = 0; i < typeList.length; i++) {
-                typeList[i] = json.getJSONArray("results").getJSONObject(i).getString("name");
-                insertValues.put(TYPE_NAME, typeList[i]);
-                db.insert(TYPE_TABLE_NAME, null, insertValues);
-            }
-
-            db.close();
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void parseRegionResponse(String response) {
-        try{
-            JSONObject json = new JSONObject(response);
-
-            String[] regionList = new String[NUMBER_OF_GENERATIONS];
-
-            SQLiteDatabase db = this.getWritableDatabase();
-
-            ContentValues insertValues = new ContentValues();
-
-            for (int i = 0; i < regionList.length; i++) {
-                regionList[i] = json.getJSONArray("results").getJSONObject(i).getString("name");
-                insertValues.put(GEN_NUMBER, i+1);
-                insertValues.put(GEN_REGION, regionList[i]);
-                db.insert(GENERATION_TABLE_NAME, null, insertValues);
-            }
         } catch (JSONException e) {
             e.printStackTrace();
         }

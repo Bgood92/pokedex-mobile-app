@@ -18,8 +18,8 @@
 
     <ImageView
         android:id="@+id/ivTrainerPikachu"
-        android:layout_width="240sp"
-        android:layout_height="115sp"
+        android:layout_width="180sp"
+        android:layout_height="86sp"
         android:layout_below="@+id/textView4"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="33dp" />

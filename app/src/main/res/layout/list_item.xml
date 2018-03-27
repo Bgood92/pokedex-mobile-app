@@ -33,13 +33,6 @@
         android:layout_marginTop="0sp"
         android:text="TextView" />
 
-
-    <TextView
-        android:id="@+id/tvGen"
-        android:layout_width="wrap_content"
-        android:layout_height="50sp"
-        android:visibility="invisible"/>
-
     <TextView
         android:id="@+id/tvHP"
         android:layout_width="wrap_content"

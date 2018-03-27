@@ -10,6 +10,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -19,71 +20,62 @@ public class MainActivity extends AppCompatActivity {
     private ListView lvPokemon;
     private PokemonAdapter pokemonAdapter;
     private ArrayList<Pokemon> pokemonList;
+    private DatabaseHelper dbHelper;
+    private Button loadData;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        DatabaseHelper dbHelper = new DatabaseHelper(this);
-        dbHelper.insert();
+        dbHelper = new DatabaseHelper(this);
 
-        lvPokemon = findViewById(R.id.lvPokemon);
-
-        //For debugging only
         pokemonList = new ArrayList<>();
-        generatePokemon(pokemonList);
 
-        pokemonAdapter = new PokemonAdapter(this, R.layout.list_item, pokemonList);
-
-        lvPokemon.setAdapter(pokemonAdapter);
-
-        lvPokemon.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        loadData = findViewById(R.id.btnLoadData);
+        loadData.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                Intent intent = new Intent(view.getContext(), PokemonActivity.class);
+            public void onClick(View v) {
+                pokemonList = dbHelper.loadData();
 
-                TextView entry = (TextView) view.findViewById(R.id.tvEntry);
-                TextView name = (TextView) view.findViewById(R.id.tvName);
-                TextView type = (TextView) view.findViewById(R.id.tvType);
-                TextView gen = (TextView) view.findViewById(R.id.tvGen);
-                TextView hp = (TextView) view.findViewById(R.id.tvHP);
-                TextView atk = (TextView) view.findViewById(R.id.tvAtk);
-                TextView def = (TextView) view.findViewById(R.id.tvDef);
-                TextView spAtk = (TextView) view.findViewById(R.id.tvSpAtk);
-                TextView spDef = (TextView) view.findViewById(R.id.tvSpDef);
-                TextView spe = (TextView) view.findViewById(R.id.tvSpe);
-
-                intent.putExtra("entry", entry.getText().toString());
-                intent.putExtra("name", name.getText().toString());
-                intent.putExtra("type", type.getText().toString());
-                intent.putExtra("gen", gen.getText().toString());
-                intent.putExtra("hp", hp.getText().toString());
-                intent.putExtra("atk", atk.getText().toString());
-                intent.putExtra("def", def.getText().toString());
-                intent.putExtra("spAtk", spAtk.getText().toString());
-                intent.putExtra("spDef", spDef.getText().toString());
-                intent.putExtra("spe", spe.getText().toString());
-
-                startActivity(intent);
+                lvPokemon = findViewById(R.id.lvPokemon);
+                pokemonAdapter = new PokemonAdapter(MainActivity.this, R.layout.list_item, pokemonList);
+                lvPokemon.setAdapter(pokemonAdapter);
             }
         });
-    }
 
-    private void generatePokemon(ArrayList<Pokemon> pokemonList)
-    {
-        pokemonList.add(new Pokemon("Bulbasaur", "Grass", "Poison", 1, 1, 11,11,11,11,11,11));
-        pokemonList.add(new Pokemon("Ivysaur", "Grass", "Poison", 2, 1, 11,11,11,11,11,11));
-        pokemonList.add(new Pokemon("Venusaur", "Grass", "Poison", 3, 1, 11,11,11,11,11,11));
-        pokemonList.add(new Pokemon("Charmander", "Fire", null, 4, 1, 11,11,11,11,11,11));
-        pokemonList.add(new Pokemon("Charmeleon", "Fire", null, 5, 1, 11,11,11,11,11,11));
-        pokemonList.add(new Pokemon("Charizard", "Fire", "Flying", 6, 1, 11,11,11,11,11,11));
-        pokemonList.add(new Pokemon("Squirtle", "Water", null, 7, 1, 11,11,11,11,11,11));
-        pokemonList.add(new Pokemon("Wartortle", "Water", null, 8, 1, 11,11,11,11,11,11));
-        pokemonList.add(new Pokemon("Blastoise", "Water", null, 9, 1, 11,11,11,11,11,11));
-        pokemonList.add(new Pokemon("Caterpie", "Bug", null, 10, 1, 11,11,11,11,11,11));
-        pokemonList.add(new Pokemon("Metapod", "Bug", null, 11, 1, 11,11,11,11,11,11));
-        pokemonList.add(new Pokemon("Butterfree", "Bug", "Flying", 12, 1, 11,11,11,11,11,11));
+
+
+//        lvPokemon.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+//            @Override
+//            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+//                Intent intent = new Intent(view.getContext(), PokemonActivity.class);
+//
+//                TextView entry = (TextView) view.findViewById(R.id.tvEntry);
+//                TextView name = (TextView) view.findViewById(R.id.tvName);
+//                TextView type = (TextView) view.findViewById(R.id.tvType);
+//                TextView gen = (TextView) view.findViewById(R.id.tvGen);
+//                TextView hp = (TextView) view.findViewById(R.id.tvHP);
+//                TextView atk = (TextView) view.findViewById(R.id.tvAtk);
+//                TextView def = (TextView) view.findViewById(R.id.tvDef);
+//                TextView spAtk = (TextView) view.findViewById(R.id.tvSpAtk);
+//                TextView spDef = (TextView) view.findViewById(R.id.tvSpDef);
+//                TextView spe = (TextView) view.findViewById(R.id.tvSpe);
+//
+//                intent.putExtra("entry", entry.getText().toString());
+//                intent.putExtra("name", name.getText().toString());
+//                intent.putExtra("type", type.getText().toString());
+//                intent.putExtra("gen", gen.getText().toString());
+//                intent.putExtra("hp", hp.getText().toString());
+//                intent.putExtra("atk", atk.getText().toString());
+//                intent.putExtra("def", def.getText().toString());
+//                intent.putExtra("spAtk", spAtk.getText().toString());
+//                intent.putExtra("spDef", spDef.getText().toString());
+//                intent.putExtra("spe", spe.getText().toString());
+//
+//                startActivity(intent);
+//            }
+//        });
     }
 
     //!-------------------------Inner Classes-----------------------------!
@@ -108,7 +100,6 @@ public class MainActivity extends AppCompatActivity {
                 TextView entry = (TextView) v.findViewById(R.id.tvEntry);
                 TextView name = (TextView) v.findViewById(R.id.tvName);
                 TextView type = (TextView) v.findViewById(R.id.tvType);
-                TextView gen = (TextView) v.findViewById(R.id.tvGen);
                 TextView hp = (TextView) v.findViewById(R.id.tvHP);
                 TextView atk = (TextView) v.findViewById(R.id.tvAtk);
                 TextView def = (TextView) v.findViewById(R.id.tvDef);
@@ -119,18 +110,20 @@ public class MainActivity extends AppCompatActivity {
                     entry.setText(String.valueOf(p.getEntry()));
                 }
                 if (name != null) {
-                    name.setText(p.getName());
+                    String capitalizedName = p.getName().substring(0,1).toUpperCase() + p.getName().substring(1);
+                    name.setText(capitalizedName);
                 }
                 if (type != null) {
-                    if (p.getSecondType() != null && p.getSecondType() != "") {
-                        type.setText(p.getFirstType() + ", " + p.getSecondType());
+                    String type1, type2;
+                    if (p.getTypes().length > 1) {
+                        type1 = p.getTypes()[1].substring(0,1).toUpperCase() + p.getTypes()[1].substring(1);
+                        type2 = p.getTypes()[0].substring(0,1).toUpperCase() + p.getTypes()[0].substring(1);
+                        type.setText(type1 + ", " + type2);
                     }
                     else {
-                        type.setText(p.getFirstType());
+                        type1 = p.getTypes()[0].substring(0,1).toUpperCase() + p.getTypes()[0].substring(1);
+                        type.setText(type1);
                     }
-                }
-                if (gen != null) {
-                    gen.setText(String.valueOf(p.getGeneration()));
                 }
                 if (hp != null) {
                     hp.setText(String.valueOf(p.getHp()));
@@ -152,70 +145,6 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             return v;
-        }
-    }
-
-    class Pokemon {
-        private String name, firstType, secondType;
-        private int entry, generation, hp, atk, def, spAtk, spDef, spe;
-
-        public Pokemon(String name, String firstType, String secondType, int entry, int gen,
-                       int hp, int atk, int def, int spAtk, int spDef, int spe) {
-            this.name = name;
-            this.firstType = firstType;
-            this.secondType = secondType;
-            this.entry = entry;
-            this.generation = gen;
-            this.hp = hp;
-            this.atk = atk;
-            this.def = def;
-            this.spAtk = spAtk;
-            this.spDef = spDef;
-            this.spe = spe;
-        }
-
-        public String getName() {
-            return this.name;
-        }
-
-        public String getFirstType() {
-            return this.firstType;
-        }
-
-        public String getSecondType() {
-            return this.secondType;
-        }
-
-        public int getEntry() {
-            return this.entry;
-        }
-
-        public int getGeneration() {
-            return this.generation;
-        }
-
-        public int getHp() {
-            return this.hp;
-        }
-
-        public int getAtk() {
-            return this.atk;
-        }
-
-        public int getDef() {
-            return this.def;
-        }
-
-        public int getSpAtk() {
-            return this.spAtk;
-        }
-
-        public int getSpDef() {
-            return this.spDef;
-        }
-
-        public int getSpe() {
-            return this.spe;
         }
     }
 }
