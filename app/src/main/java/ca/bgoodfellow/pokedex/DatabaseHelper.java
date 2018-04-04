@@ -8,6 +8,8 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.os.AsyncTask;
+import android.widget.Button;
+import android.widget.ProgressBar;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -24,7 +26,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     //Database name and version number
     //Change the following values if the database name or version number changes
     private static final String DATABASE_NAME = "Pokedex";
-    private static final int DATABASE_VERSION = 5;
+    private static final int DATABASE_VERSION = 1;
+
+    /*
+     * The following constants are only to be changed when Pokemon are added
+     * to the Pokedex and/or more types are added
+     */
+    private static final int NUMBER_OF_POKEMON = 250;
+    private static final int NUMBER_OF_TYPES = 18;
 
     /*
      * Below are SQL Strings used to create the following tables
@@ -46,6 +55,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String TYPE_TABLE_NAME = "Type";
     private static final String TYPE_ID = "TypeId";
     private static final String TYPE_NAME = "Name";
+    private static final String TYPE_COLOR = "Color";
 
     //Generation table
 //    private static final String GENERATION_TABLE_NAME = "Generation";
@@ -70,7 +80,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String CREATE_TYPE_TABLE = "CREATE TABLE " + TYPE_TABLE_NAME + "(" +
             TYPE_ID + " INTEGER NOT NULL PRIMARY KEY, " +
-            TYPE_NAME + " TEXT NOT NULL )";
+            TYPE_NAME + " TEXT NOT NULL, " +
+            TYPE_COLOR + " TEXT )";
 
 //    private static final String CREATE_GENERATION_TABLE = "CREATE TABLE " + GENERATION_TABLE_NAME + "(" +
 //            GEN_NUMBER + " INTEGER NOT NULL PRIMARY KEY, " +
@@ -83,15 +94,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             "FOREIGN KEY(" + PKN_ENTRY + ") REFERENCES " + POKEMON_TABLE_NAME + "(" + PKN_ENTRY + "), " +
             "FOREIGN KEY(" + TYPE_ID + ") REFERENCES " + TYPE_TABLE_NAME + "(" + TYPE_ID + "))";
 
-    /*
-     * The following constants are only to be changed when Pokemon are added
-     * to the Pokedex and/or more types are added
-     */
-    private static final int NUMBER_OF_POKEMON = 802;
-    private static final int NUMBER_OF_TYPES = 18;
-
     private PokemonHttpHandler pokemonHandler;
-    private int pokemonNumber = 1;
+    private PokemonHttpHandler newPokemonHandler;
+    private int pokemonNumber = 152;
     private String typeUrl = "https://pokeapi.co/api/v2/type/";
     private String pokemonURL = "https://pokeapi.co/api/v2/pokemon/";
 
@@ -102,6 +107,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DROP_TYPE_TABLE = "DROP TABLE " + TYPE_TABLE_NAME;
     //private static final String DROP_GEN_TABLE = "DROP TABLE " + GENERATION_TABLE_NAME;
     private static final String DROP_POKEMON_TYPE_TABLE = "DROP TABLE " + POKEMON_TYPE_TABLE_NAME;
+
+    private ProgressBar progressBar;
+    private Button loadData;
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -144,9 +152,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         int entry;
         String name;
+        String color;
         int hp, atk, def, spAtk, spDef, speed;
         String[] queryArgs = new String[1];
-        String query =  "SELECT t.Name" +
+        String query =  "SELECT t.Name, t.Color" +
                         " FROM Pokemon p JOIN PokemonType pt ON p.PokedexEntry = pt.PokedexEntry" +
                         " JOIN Type t ON pt.TypeId = t.TypeId" +
                         " AND p.Name = ?";
@@ -168,11 +177,15 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
             typeCursor.moveToFirst();
 
+            color = "";
+
             for (int j = 0; j < typeCursor.getCount(); j++) {
                 types[j] = typeCursor.getString(0);
+                color = typeCursor.getString(1);
                 typeCursor.moveToNext();
             }
-            pokemon.add(new Pokemon(name, types, entry, hp, atk, def, spAtk, spDef, speed));
+
+            pokemon.add(new Pokemon(name, types, entry, color, hp, atk, def, spAtk, spDef, speed));
 
             pokemonCursor.moveToNext();
         }
@@ -182,6 +195,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public void insert() {
+
         TypeHttpHandler typeHandler = new TypeHttpHandler();
 
         typeHandler.execute(typeUrl);
@@ -191,13 +205,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         pokemonHandler = new PokemonHttpHandler();
         pokemonHandler.execute(pokemonURL);
 
-//        for (int i = 1; i <= NUMBER_OF_POKEMON; i++) {
-//            url = "https://pokeapi.co/api/v2/pokemon/" + i;
-//            pokemonHandler = new PokemonHttpHandler();
-//            pokemonHandler.execute(url);
-        //}
+
     }
 
+    public void additionalInsert(int index) {
+        //Sets pokemonNumber to the next Pokemon after the last one that was inserted
+        pokemonNumber = index + 1;
+
+        pokemonURL = "https://pokeapi.co/api/v2/pokemon/";
+
+        newPokemonHandler = new PokemonHttpHandler();
+        newPokemonHandler.execute(pokemonURL);
+    }
     class PokemonHttpHandler extends AsyncTask {
         OkHttpClient client = new OkHttpClient();
 
@@ -221,7 +240,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         protected void onPostExecute(Object o) {
             super.onPostExecute(o);
 
-            if (o != null && pokemonNumber <= 151)
+            if (o != null && pokemonNumber <= NUMBER_OF_POKEMON)
             {
                 parsePokemonResponse(o.toString());
 
@@ -281,6 +300,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 insertValues.put(TYPE_NAME, typeList[i]);
                 db.insert(TYPE_TABLE_NAME, null, insertValues);
             }
+
+            insertColorsIntoTypeTabe(db);
 
             db.close();
 
@@ -380,6 +401,102 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         } catch (JSONException e) {
             e.printStackTrace();
         }
+    }
+
+    private void insertColorsIntoTypeTabe(SQLiteDatabase db)
+    {
+        ContentValues insertValues = new ContentValues();
+
+        String[] singleType = new String[1];
+
+        singleType[0] = "normal";
+        insertValues.put(TYPE_COLOR, "#ffffec");
+        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+
+        insertValues = new ContentValues();
+        singleType[0] = "fighting";
+        insertValues.put(TYPE_COLOR, "#ff8566");
+        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+
+        insertValues = new ContentValues();
+        singleType[0] = "water";
+        insertValues.put(TYPE_COLOR, "#b3d1ff");
+        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+
+        insertValues = new ContentValues();
+        singleType[0] = "fire";
+        insertValues.put(TYPE_COLOR, "#ffa366");
+        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+
+        insertValues = new ContentValues();
+        singleType[0] = "grass";
+        insertValues.put(TYPE_COLOR, "#b3e6cc");
+        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+
+        insertValues = new ContentValues();
+        singleType[0] = "electric";
+        insertValues.put(TYPE_COLOR, "#ffff4d");
+        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+
+        insertValues = new ContentValues();
+        singleType[0] = "ice";
+        insertValues.put(TYPE_COLOR, "#ccffff");
+        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+
+        insertValues = new ContentValues();
+        singleType[0] = "bug";
+        insertValues.put(TYPE_COLOR, "#ccffb3");
+        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+
+        insertValues = new ContentValues();
+        singleType[0] = "flying";
+        insertValues.put(TYPE_COLOR, "#e6f7ff");
+        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+
+        insertValues = new ContentValues();
+        singleType[0] = "ghost";
+        insertValues.put(TYPE_COLOR, "#dab3ff");
+        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+
+        insertValues = new ContentValues();
+        singleType[0] = "rock";
+        insertValues.put(TYPE_COLOR, "#d9d9d9");
+        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+
+        insertValues = new ContentValues();
+        singleType[0] = "ground";
+        insertValues.put(TYPE_COLOR, "#e6cbb3");
+        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+
+        insertValues = new ContentValues();
+        singleType[0] = "dragon";
+        insertValues.put(TYPE_COLOR, "#8080ff");
+        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+
+        insertValues = new ContentValues();
+        singleType[0] = "fairy";
+        insertValues.put(TYPE_COLOR, "#ffccff");
+        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+
+        insertValues = new ContentValues();
+        singleType[0] = "dark";
+        insertValues.put(TYPE_COLOR, "#958884");
+        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+
+        insertValues = new ContentValues();
+        singleType[0] = "psychic";
+        insertValues.put(TYPE_COLOR, "#ff66a3");
+        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+
+        insertValues = new ContentValues();
+        singleType[0] = "steel";
+        insertValues.put(TYPE_COLOR, "#e6e6e6");
+        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+
+        insertValues = new ContentValues();
+        singleType[0] = "poison";
+        insertValues.put(TYPE_COLOR, "#d966ff");
+        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
     }
 
 }

@@ -11,4 +11,25 @@
     <string name="pokemon_spdef">Sp.Def</string>
     <string name="pokemon_spe">Speed</string>
     <string name="pokemon_stats">Stats</string>
+    <string name="title_activity_settings">Settings</string>
+
+    <string-array name="pref_language_list">
+        <item>English (US)</item>
+        <item>Italiano (Italian)</item>
+        <item>Français (French)</item>
+    </string-array>
+    <string-array name="pref_language_list_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+    </string-array>
+
+    <string name="settings_title">Settings</string>
+    <string name="help_title">Help</string>
+    <string name="theme_switch_key">dark_theme_switch</string>
+    <string name="theme_title">Dark theme</string>
+    <string name="theme_description">Use light or dark theme</string>
+    <string name="language_list_key">language_list</string>
+    <string name="language_setting">Language</string>
+    <string name="language_description">Select the language you want the text to be displayed as</string>
 </resources>

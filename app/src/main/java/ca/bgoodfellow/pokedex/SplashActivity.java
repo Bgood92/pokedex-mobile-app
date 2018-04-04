@@ -8,6 +8,7 @@ import android.graphics.drawable.AnimationDrawable;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.SystemClock;
+import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.AttributeSet;
@@ -30,6 +31,8 @@ public class SplashActivity extends AppCompatActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
+
+        PreferenceManager.setDefaultValues(this, R.xml.pref_settings, false);
 
         ImageView ivTrainerPikachu = (ImageView) findViewById(R.id.ivTrainerPikachu);
         ivTrainerPikachu.setBackgroundResource(R.drawable.trainer_walking);

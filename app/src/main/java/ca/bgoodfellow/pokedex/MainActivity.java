@@ -2,17 +2,26 @@ package ca.bgoodfellow.pokedex;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.preference.PreferenceManager;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 
@@ -21,64 +30,118 @@ public class MainActivity extends AppCompatActivity {
     private PokemonAdapter pokemonAdapter;
     private ArrayList<Pokemon> pokemonList;
     private DatabaseHelper dbHelper;
-    private Button loadData;
+    private Button loadData, additionalData;
+    private SharedPreferences sharedPreferences;
+    private ProgressBar progressBar;
+
+    private static final int NUMBER_OF_POKEMON = 802;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        PreferenceManager.setDefaultValues(this, R.xml.pref_settings, false);
+
+        //progressBar = findViewById(R.id.pbLoadingData);
+        //loadData = findViewById(R.id.btnLoadData);
+
         dbHelper = new DatabaseHelper(this);
 
         pokemonList = new ArrayList<>();
 
+        lvPokemon = findViewById(R.id.lvPokemon);
         loadData = findViewById(R.id.btnLoadData);
+
         loadData.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 pokemonList = dbHelper.loadData();
+                    pokemonAdapter = new PokemonAdapter(MainActivity.this, R.layout.list_item, pokemonList);
+                    lvPokemon.setAdapter(pokemonAdapter);
+            }
+        });
+        additionalData = findViewById(R.id.btnAdditionalData);
+        additionalData.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (pokemonList.size() == NUMBER_OF_POKEMON) {
+                    additionalData.setVisibility(additionalData.INVISIBLE);
+                }
+                else
+                {
+                    dbHelper.additionalInsert(pokemonList.size());
+                    Toast.makeText(MainActivity.this, "Connecting to https://pokeapi.co/", Toast.LENGTH_SHORT).show();
+                }
 
-                lvPokemon = findViewById(R.id.lvPokemon);
-                pokemonAdapter = new PokemonAdapter(MainActivity.this, R.layout.list_item, pokemonList);
-                lvPokemon.setAdapter(pokemonAdapter);
             }
         });
 
+        EventHandler handler = new EventHandler();
 
-
-//        lvPokemon.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-//            @Override
-//            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-//                Intent intent = new Intent(view.getContext(), PokemonActivity.class);
-//
-//                TextView entry = (TextView) view.findViewById(R.id.tvEntry);
-//                TextView name = (TextView) view.findViewById(R.id.tvName);
-//                TextView type = (TextView) view.findViewById(R.id.tvType);
-//                TextView gen = (TextView) view.findViewById(R.id.tvGen);
-//                TextView hp = (TextView) view.findViewById(R.id.tvHP);
-//                TextView atk = (TextView) view.findViewById(R.id.tvAtk);
-//                TextView def = (TextView) view.findViewById(R.id.tvDef);
-//                TextView spAtk = (TextView) view.findViewById(R.id.tvSpAtk);
-//                TextView spDef = (TextView) view.findViewById(R.id.tvSpDef);
-//                TextView spe = (TextView) view.findViewById(R.id.tvSpe);
-//
-//                intent.putExtra("entry", entry.getText().toString());
-//                intent.putExtra("name", name.getText().toString());
-//                intent.putExtra("type", type.getText().toString());
-//                intent.putExtra("gen", gen.getText().toString());
-//                intent.putExtra("hp", hp.getText().toString());
-//                intent.putExtra("atk", atk.getText().toString());
-//                intent.putExtra("def", def.getText().toString());
-//                intent.putExtra("spAtk", spAtk.getText().toString());
-//                intent.putExtra("spDef", spDef.getText().toString());
-//                intent.putExtra("spe", spe.getText().toString());
-//
-//                startActivity(intent);
-//            }
-//        });
+        lvPokemon.setOnItemClickListener(handler);
     }
 
-    //!-------------------------Inner Classes-----------------------------!
+    // !----------------------------Methods-------------------------------!
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.settings_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle item selection
+        switch (item.getItemId()) {
+            case R.id.settings:
+                Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+                startActivity(intent);
+                return true;
+            case R.id.help:
+                //TODO: Create a help activity
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private void startPokemonActivity(View view) {
+        Intent intent = new Intent(view.getContext(), PokemonActivity.class);
+
+        TextView entry = (TextView) view.findViewById(R.id.tvEntry);
+        TextView name = (TextView) view.findViewById(R.id.tvName);
+        TextView type = (TextView) view.findViewById(R.id.tvType);
+        TextView hp = (TextView) view.findViewById(R.id.tvHP);
+        TextView atk = (TextView) view.findViewById(R.id.tvAtk);
+        TextView def = (TextView) view.findViewById(R.id.tvDef);
+        TextView spAtk = (TextView) view.findViewById(R.id.tvSpAtk);
+        TextView spDef = (TextView) view.findViewById(R.id.tvSpDef);
+        TextView spe = (TextView) view.findViewById(R.id.tvSpe);
+
+        intent.putExtra("entry", entry.getText().toString());
+        intent.putExtra("name", name.getText().toString());
+        intent.putExtra("type", type.getText().toString());
+        intent.putExtra("hp", hp.getText().toString());
+        intent.putExtra("atk", atk.getText().toString());
+        intent.putExtra("def", def.getText().toString());
+        intent.putExtra("spAtk", spAtk.getText().toString());
+        intent.putExtra("spDef", spDef.getText().toString());
+        intent.putExtra("spe", spe.getText().toString());
+
+        startActivity(intent);
+    }
+    // !------------------------Inner Classes-----------------------------!
+
+    class EventHandler implements AdapterView.OnItemClickListener {
+        @Override
+        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+            if (parent.getId() == R.id.lvPokemon) {
+                startPokemonActivity(view);
+            }
+        }
+    }
 
     class PokemonAdapter extends ArrayAdapter<Pokemon> {
         private ArrayList<Pokemon> list;
@@ -97,6 +160,8 @@ public class MainActivity extends AppCompatActivity {
             }
             Pokemon p = list.get(position);
             if (p != null) {
+                String color = p.getColor();
+                v.setBackgroundColor(Color.parseColor(color));
                 TextView entry = (TextView) v.findViewById(R.id.tvEntry);
                 TextView name = (TextView) v.findViewById(R.id.tvName);
                 TextView type = (TextView) v.findViewById(R.id.tvType);

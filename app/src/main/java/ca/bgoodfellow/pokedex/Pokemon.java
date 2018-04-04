@@ -9,13 +9,15 @@ import java.util.ArrayList;
 public class Pokemon {
     private String name;
     private String[] types;
+    private String color;
     private int entry, hp, atk, def, spAtk, spDef, spe;
 
-    public Pokemon(String name, String[] types, int entry,
+    public Pokemon(String name, String[] types, int entry, String color,
                    int hp, int atk, int def, int spAtk, int spDef, int spe) {
         this.name = name;
         this.types = types;
         this.entry = entry;
+        this.color = color;
         this.hp = hp;
         this.atk = atk;
         this.def = def;
@@ -34,6 +36,10 @@ public class Pokemon {
 
     public int getEntry() {
         return this.entry;
+    }
+
+    public String getColor() {
+        return color;
     }
 
     public int getHp() {
