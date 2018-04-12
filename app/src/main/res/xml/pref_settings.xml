@@ -16,4 +16,11 @@
         android:summary="@string/theme_description"
         android:title="@string/theme_title" />
 
+    <SwitchPreference
+        android:id="@+id/autoCry"
+        android:defaultValue="true"
+        android:key="@string/battle_cry_key"
+        android:summary="Play battle cry when opening a Pokemon Activity"
+        android:title="@string/cry_switch_title" />
+
 </PreferenceScreen>

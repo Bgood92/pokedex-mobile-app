@@ -32,4 +32,6 @@
     <string name="language_list_key">language_list</string>
     <string name="language_setting">Language</string>
     <string name="language_description">Select the language you want the text to be displayed as</string>
+    <string name="battle_cry_key">battle_cry_key</string>
+    <string name="cry_switch_title">Auto-play cry</string>
 </resources>

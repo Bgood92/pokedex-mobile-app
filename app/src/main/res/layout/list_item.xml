@@ -1,71 +1,98 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:layout_marginRight="4dp">
 
-    <TextView
-        android:id="@+id/tvEntry"
-        android:layout_width="94sp"
-        android:layout_height="60sp"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentTop="true"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
-        android:text="TextView"
-        android:textSize="20sp" />
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
 
-    <TextView
-        android:id="@+id/tvName"
-        android:layout_width="wrap_content"
-        android:layout_height="30sp"
-        android:layout_alignTop="@+id/tvEntry"
-        android:layout_toEndOf="@+id/tvEntry"
-        android:text="TextView"
-        android:textSize="20sp" />
+        <TextView
+            android:id="@+id/tvEntry"
+            android:layout_width="94sp"
+            android:layout_height="60sp"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentTop="true"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="8dp"
+            android:text="TextView"
+            android:textSize="20sp" />
 
-    <TextView
-        android:id="@+id/tvType"
-        android:layout_width="wrap_content"
-        android:layout_height="30sp"
-        android:layout_below="@+id/tvName"
-        android:layout_alignLeft="@+id/tvName"
-        android:layout_alignStart="@+id/tvName"
-        android:layout_marginTop="0sp"
-        android:text="TextView" />
+        <TextView
+            android:id="@+id/tvName"
+            android:layout_width="wrap_content"
+            android:layout_height="30sp"
+            android:layout_alignTop="@+id/tvEntry"
+            android:layout_toEndOf="@+id/tvEntry"
+            android:text="TextView"
+            android:textSize="20sp" />
 
-    <TextView
-        android:id="@+id/tvHP"
-        android:layout_width="wrap_content"
-        android:layout_height="50sp"
-        android:visibility="invisible"/>
+        <TextView
+            android:id="@+id/tvType"
+            android:layout_width="wrap_content"
+            android:layout_height="30sp"
+            android:layout_below="@+id/tvName"
+            android:layout_alignLeft="@+id/tvName"
+            android:layout_alignStart="@+id/tvName"
+            android:layout_marginTop="0sp"
+            android:text="TextView" />
 
-    <TextView
-        android:id="@+id/tvAtk"
-        android:layout_width="wrap_content"
-        android:layout_height="50sp"
-        android:visibility="invisible"/>
+        <TextView
+            android:id="@+id/tvHP"
+            android:layout_width="wrap_content"
+            android:layout_height="50sp"
+            android:visibility="invisible"/>
 
-    <TextView
-        android:id="@+id/tvDef"
-        android:layout_width="wrap_content"
-        android:layout_height="50sp"
-        android:visibility="invisible"/>
+        <TextView
+            android:id="@+id/tvAtk"
+            android:layout_width="wrap_content"
+            android:layout_height="50sp"
+            android:visibility="invisible"/>
 
-    <TextView
-        android:id="@+id/tvSpAtk"
-        android:layout_width="wrap_content"
-        android:layout_height="50sp"
-        android:visibility="invisible"/>
+        <TextView
+            android:id="@+id/tvDef"
+            android:layout_width="wrap_content"
+            android:layout_height="50sp"
+            android:visibility="invisible"/>
 
-    <TextView
-        android:id="@+id/tvSpDef"
-        android:layout_width="wrap_content"
-        android:layout_height="50sp"
-        android:visibility="invisible"/>
+        <TextView
+            android:id="@+id/tvSpAtk"
+            android:layout_width="wrap_content"
+            android:layout_height="50sp"
+            android:visibility="invisible"/>
 
-    <TextView
-        android:id="@+id/tvSpe"
-        android:layout_width="wrap_content"
-        android:layout_height="50sp"
-        android:visibility="invisible"/>
-</RelativeLayout>
+        <TextView
+            android:id="@+id/tvSpDef"
+            android:layout_width="wrap_content"
+            android:layout_height="50sp"
+            android:visibility="invisible"/>
+
+        <TextView
+            android:id="@+id/tvSpe"
+            android:layout_width="wrap_content"
+            android:layout_height="50sp"
+            android:visibility="invisible"/>
+
+        <ImageView
+            android:id="@+id/imageViewPokemon"
+            android:layout_width="65sp"
+            android:layout_height="65sp"
+            android:layout_alignBottom="@+id/tvType"
+            android:layout_alignParentEnd="true"
+            android:layout_marginEnd="36dp"
+            android:background="@drawable/img" />
+
+    </RelativeLayout>
+
+    <View
+        android:id="@+id/shadow"
+        android:layout_width="fill_parent"
+        android:layout_height="4dp"
+        android:background="@drawable/shadow_drawable"
+        android:alpha="0.3"/>
+
+</LinearLayout>
+

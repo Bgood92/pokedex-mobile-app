@@ -4,19 +4,31 @@ package ca.bgoodfellow.pokedex;
  */
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.graphics.Color;
 import android.os.AsyncTask;
-import android.widget.Button;
+import android.support.annotation.NonNull;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.bumptech.glide.Glide;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.w3c.dom.Text;
 
 import java.util.ArrayList;
-import java.util.List;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -32,7 +44,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
      * The following constants are only to be changed when Pokemon are added
      * to the Pokedex and/or more types are added
      */
-    private static final int NUMBER_OF_POKEMON = 250;
+    private static final int NUMBER_OF_POKEMON = 151;
     private static final int NUMBER_OF_TYPES = 18;
 
     /*
@@ -57,11 +69,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String TYPE_NAME = "Name";
     private static final String TYPE_COLOR = "Color";
 
-    //Generation table
-//    private static final String GENERATION_TABLE_NAME = "Generation";
-//    private static final String GEN_NUMBER = "GenerationNumber";
-//    private static final String GEN_REGION = "Region";
-
     //PokemonType table (join table between Pokemon and Type)
     //Primary keys for this table will be the Pokemon entry and
     //Type id which are both defined above, which will also be
@@ -83,10 +90,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             TYPE_NAME + " TEXT NOT NULL, " +
             TYPE_COLOR + " TEXT )";
 
-//    private static final String CREATE_GENERATION_TABLE = "CREATE TABLE " + GENERATION_TABLE_NAME + "(" +
-//            GEN_NUMBER + " INTEGER NOT NULL PRIMARY KEY, " +
-//            GEN_REGION + " TEXT ";
-
     private static final String CREATE_POKEMON_TYPE_TABLE = "CREATE TABLE " + POKEMON_TYPE_TABLE_NAME + "( " +
             PKN_ENTRY + " INTEGER NOT NULL, " +
             TYPE_ID + " INTEGER NOT NULL, " +
@@ -96,7 +99,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     private PokemonHttpHandler pokemonHandler;
     private PokemonHttpHandler newPokemonHandler;
-    private int pokemonNumber = 152;
+    private int pokemonNumber = 1;
     private String typeUrl = "https://pokeapi.co/api/v2/type/";
     private String pokemonURL = "https://pokeapi.co/api/v2/pokemon/";
 
@@ -105,14 +108,30 @@ public class DatabaseHelper extends SQLiteOpenHelper {
      */
     private static final String DROP_POKEMON_TABLE = "DROP TABLE " + POKEMON_TABLE_NAME;
     private static final String DROP_TYPE_TABLE = "DROP TABLE " + TYPE_TABLE_NAME;
-    //private static final String DROP_GEN_TABLE = "DROP TABLE " + GENERATION_TABLE_NAME;
     private static final String DROP_POKEMON_TYPE_TABLE = "DROP TABLE " + POKEMON_TYPE_TABLE_NAME;
 
     private ProgressBar progressBar;
-    private Button loadData;
+    private MainActivity mainActivity;
+    private PokemonAdapter pokemonAdapter;
+    private ArrayList<Pokemon> pokemonList;
+    private ListView listviewPokemon;
+    private ImageView imageViewPokemon;
+    private boolean allDataIsLoaded;
+    private SharedPreferences sharedPreferences;
+    private boolean isDatabaseCreated;
+    private TextView loadingText;
 
-    public DatabaseHelper(Context context) {
+    public DatabaseHelper(Context context, ListView listviewPokemon, ProgressBar progressBar, ImageView imageViewPokemon, TextView loadingText) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
+        mainActivity = (MainActivity)context;
+        pokemonList = new ArrayList<>();
+        this.listviewPokemon = listviewPokemon;
+        this.imageViewPokemon = imageViewPokemon;
+        allDataIsLoaded = false;
+        this.progressBar = progressBar;
+        this.loadingText = loadingText;
+        this.loadingText.setText("0/" + NUMBER_OF_POKEMON + " items loaded...");
+        sharedPreferences = context.getSharedPreferences("main", 0);
     }
 
     @Override
@@ -121,6 +140,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL(CREATE_TYPE_TABLE);
         db.execSQL(CREATE_POKEMON_TABLE);
         db.execSQL(CREATE_POKEMON_TYPE_TABLE);
+
+        progressBar.setVisibility(View.VISIBLE);
+        progressBar.setMax(NUMBER_OF_POKEMON);
+        progressBar.setProgress(0);
 
         //Calls a method to asyncronously fetch data from an online API and insert
         //the retrieved data into the approprate tables
@@ -133,9 +156,31 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         //Drop all tables and call the onCreate method to recreate the database
         db.execSQL(DROP_POKEMON_TYPE_TABLE);
         db.execSQL(DROP_POKEMON_TABLE);
-        //db.execSQL(DROP_GEN_TABLE);
         db.execSQL(DROP_TYPE_TABLE);
         onCreate(db);
+    }
+
+    public void initiateHelper() {
+        SQLiteDatabase db = getReadableDatabase();
+        db.close();
+    }
+
+    public void reset(ProgressBar progressBar, TextView loadingText) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.delete(POKEMON_TYPE_TABLE_NAME, null, null);
+        db.delete(POKEMON_TABLE_NAME, null, null);
+        db.delete(TYPE_TABLE_NAME, null, null);
+        db.close();
+
+        this.progressBar = progressBar;
+        this.progressBar.setVisibility(View.VISIBLE);
+        this.progressBar.setMax(NUMBER_OF_POKEMON);
+        this.progressBar.setProgress(0);
+
+        this.loadingText = loadingText;
+        this.loadingText.setText("0/" + NUMBER_OF_POKEMON + " items loaded...");
+
+        insert();
     }
 
     public ArrayList<Pokemon> loadData()
@@ -185,38 +230,29 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 typeCursor.moveToNext();
             }
 
-            pokemon.add(new Pokemon(name, types, entry, color, hp, atk, def, spAtk, spDef, speed));
+            pokemonList.add(new Pokemon(name, types, entry, color, hp, atk, def, spAtk, spDef, speed));
 
             pokemonCursor.moveToNext();
         }
 
         db.close();
+
+        pokemonAdapter = new PokemonAdapter(mainActivity, R.layout.list_item, pokemonList);
+        listviewPokemon.setAdapter(pokemonAdapter);
+
         return pokemon;
     }
 
     public void insert() {
+        Toast.makeText(mainActivity, "Please wait while we attempt to load all Pokemon.", Toast.LENGTH_LONG).show();
 
         TypeHttpHandler typeHandler = new TypeHttpHandler();
-
         typeHandler.execute(typeUrl);
-
-        //PokemonHttpHandler pokemonHandler;
 
         pokemonHandler = new PokemonHttpHandler();
         pokemonHandler.execute(pokemonURL);
-
-
     }
 
-    public void additionalInsert(int index) {
-        //Sets pokemonNumber to the next Pokemon after the last one that was inserted
-        pokemonNumber = index + 1;
-
-        pokemonURL = "https://pokeapi.co/api/v2/pokemon/";
-
-        newPokemonHandler = new PokemonHttpHandler();
-        newPokemonHandler.execute(pokemonURL);
-    }
     class PokemonHttpHandler extends AsyncTask {
         OkHttpClient client = new OkHttpClient();
 
@@ -224,7 +260,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         protected String doInBackground(Object[] params) {
             Request.Builder builder = new Request.Builder();
             builder.url(pokemonURL + pokemonNumber);
-            //builder.url(params[0].toString());
             Request request = builder.build();
 
             try {
@@ -240,14 +275,40 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         protected void onPostExecute(Object o) {
             super.onPostExecute(o);
 
-            if (o != null && pokemonNumber <= NUMBER_OF_POKEMON)
-            {
-                parsePokemonResponse(o.toString());
+            if (pokemonNumber <= NUMBER_OF_POKEMON) {
+                if (o != null) {
+                    parsePokemonResponse(o.toString());
 
-                pokemonNumber++;
+                    isDatabaseCreated = true;
+                    SharedPreferences.Editor editor = sharedPreferences.edit();
+                    editor.putBoolean("database_created", isDatabaseCreated);
+                    editor.apply();
 
-                pokemonHandler = new PokemonHttpHandler();
-                pokemonHandler.execute(pokemonURL);
+                    progressBar.setProgress(pokemonNumber);
+                    loadingText.setText(pokemonNumber + "/" + NUMBER_OF_POKEMON + " items loaded...");
+
+                    pokemonNumber++;
+
+                    pokemonHandler = new PokemonHttpHandler();
+                    pokemonHandler.execute(pokemonURL);
+                }
+                else {
+                    Toast.makeText(mainActivity, "Attempting to reconnect to server.", Toast.LENGTH_SHORT).show();
+                    newPokemonHandler = new PokemonHttpHandler();
+                    newPokemonHandler.execute(pokemonURL);
+                }
+            }
+            else {
+                progressBar.setVisibility(progressBar.INVISIBLE);
+                loadingText.setVisibility(loadingText.INVISIBLE);
+                allDataIsLoaded = true;
+                SharedPreferences.Editor editor = sharedPreferences.edit();
+                editor.putBoolean("loaded", allDataIsLoaded);
+                editor.apply();
+
+                loadData();
+
+                Toast.makeText(mainActivity, "Successfully loaded all Pokemon.", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -313,91 +374,120 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private void parsePokemonResponse(String response) {
         try{
             JSONObject json = new JSONObject(response);
-
-            JSONArray stats = json.getJSONArray("stats");
-
-            JSONArray types = json.getJSONArray("types");
-
             String name = json.getJSONArray("forms").getJSONObject(0).getString("name");
 
-            int entry = json.getInt("id");
+            SQLiteDatabase readableDB = getReadableDatabase();
 
-            ArrayList<String> typesList = new ArrayList<>();
+            String[] args = { name };
+            String[] columns = { PKN_NAME };
 
-            int[] statsList = new int[6];
+            Cursor toSeeIfPokemonExists = readableDB.query(POKEMON_TABLE_NAME, columns, "Name LIKE ?", args, null, null, null);
+            toSeeIfPokemonExists.moveToFirst();
 
-            for (int i = 0; i < types.length() ; i++) {
-                typesList.add(types.getJSONObject(i).getJSONObject("type").getString("name"));
-            }
+            if (toSeeIfPokemonExists.getCount() <= 0) {
+                JSONArray stats = json.getJSONArray("stats");
 
-            for (int i = 0; i < statsList.length; i++) {
-                statsList[i] = stats.getJSONObject(i).getInt("base_stat");
-            }
-            ContentValues insertValues = new ContentValues();
+                JSONArray types = json.getJSONArray("types");
 
-            insertValues.put(PKN_ENTRY, entry);
-            insertValues.put(PKN_NAME, name);
-            insertValues.put(PKN_SPEED, statsList[0]);
-            insertValues.put(PKN_SP_DEF, statsList[1]);
-            insertValues.put(PKN_SP_ATK, statsList[2]);
-            insertValues.put(PKN_DEF, statsList[3]);
-            insertValues.put(PKN_ATK, statsList[4]);
-            insertValues.put(PKN_HP, statsList[5]);
+                int entry = json.getInt("id");
 
-            SQLiteDatabase writableDB = this.getWritableDatabase();
+                ArrayList<String> typesList = new ArrayList<>();
 
-            writableDB.insert(POKEMON_TABLE_NAME, null, insertValues);
+                int[] statsList = new int[6];
 
-            SQLiteDatabase readableDB = this.getReadableDatabase();
+                for (int i = 0; i < types.length() ; i++) {
+                    typesList.add(types.getJSONObject(i).getJSONObject("type").getString("name"));
+                }
 
-            String[] selection = { TYPE_ID };
-            String[] typesArray;
-
-            if (typesList.size() > 1)
-            {
-                typesArray = new String[2];
-            }
-            else
-            {
-                typesArray = new String[1];
-            }
-
-            for (int i = 0; i < typesList.size(); i++) {
-                typesArray[i] = typesList.get(i);
-            }
-
-            Cursor c;
-
-            if (typesList.size() > 1) {
-                c = readableDB.query(TYPE_TABLE_NAME,
-                                     selection,
-                                     "Name IN (?,?)",
-                                     typesArray,
-                                     null, null, null);
-            }
-            else {
-                c = readableDB.query(TYPE_TABLE_NAME,
-                        selection,
-                        "Name IN (?)",
-                        typesArray,
-                        null, null, null);
-            }
-
-            c.moveToFirst();
-
-            for (int i = 0; i < c.getCount(); i++) {
-                insertValues = new ContentValues();
+                for (int i = 0; i < statsList.length; i++) {
+                    statsList[i] = stats.getJSONObject(i).getInt("base_stat");
+                }
+                ContentValues insertValues = new ContentValues();
 
                 insertValues.put(PKN_ENTRY, entry);
-                insertValues.put(TYPE_ID, c.getInt(0));
+                insertValues.put(PKN_NAME, name);
+                insertValues.put(PKN_SPEED, statsList[0]);
+                insertValues.put(PKN_SP_DEF, statsList[1]);
+                insertValues.put(PKN_SP_ATK, statsList[2]);
+                insertValues.put(PKN_DEF, statsList[3]);
+                insertValues.put(PKN_ATK, statsList[4]);
+                insertValues.put(PKN_HP, statsList[5]);
 
-                writableDB.insert(POKEMON_TYPE_TABLE_NAME, null, insertValues);
+                SQLiteDatabase writableDB = this.getWritableDatabase();
 
-                c.moveToNext();
+                writableDB.insert(POKEMON_TABLE_NAME, null, insertValues);
+
+                String[] selection = { TYPE_ID };
+                String[] typesArray;
+
+                if (typesList.size() > 1)
+                {
+                    typesArray = new String[2];
+                }
+                else
+                {
+                    typesArray = new String[1];
+                }
+
+                for (int i = 0; i < typesList.size(); i++) {
+                    typesArray[i] = typesList.get(i);
+                }
+
+                Cursor c;
+
+                if (typesList.size() > 1) {
+                    c = readableDB.query(TYPE_TABLE_NAME,
+                            selection,
+                            "Name IN (?,?)",
+                            typesArray,
+                            null, null, null);
+                }
+                else {
+                    c = readableDB.query(TYPE_TABLE_NAME,
+                            selection,
+                            "Name IN (?)",
+                            typesArray,
+                            null, null, null);
+                }
+
+                c.moveToFirst();
+
+                for (int i = 0; i < c.getCount(); i++) {
+                    insertValues = new ContentValues();
+
+                    insertValues.put(PKN_ENTRY, entry);
+                    insertValues.put(TYPE_ID, c.getInt(0));
+
+                    writableDB.insert(POKEMON_TYPE_TABLE_NAME, null, insertValues);
+
+                    c.moveToNext();
+                }
+
+                String[] colorArg = { TYPE_COLOR };
+                String[] typeArg = new String[1];
+
+                if (typesArray.length > 1) {
+                    typeArg[0] = typesArray[1];
+                }
+                else {
+                    typeArg[0] = typesArray[0];
+                }
+
+//                Cursor colorCursor = readableDB.query(TYPE_TABLE_NAME, colorArg, "Name LIKE ?", typeArg, null, null, null);
+//
+//                colorCursor.moveToFirst();
+//
+//                String color = colorCursor.getString(0);
+//
+//                pokemonList.add(new Pokemon(name, typesArray, entry, colorCursor.getString(0), statsList[5], statsList[4], statsList[3], statsList[2], statsList[1], statsList[0]));
+
+                writableDB.close();
+                readableDB.close();
+            }
+            else {
+                pokemonNumber--;
             }
 
-            writableDB.close();
-            readableDB.close();
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -410,93 +500,159 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         String[] singleType = new String[1];
 
         singleType[0] = "normal";
-        insertValues.put(TYPE_COLOR, "#ffffec");
-        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+        insertEachColorIntoTable("#ffffec", insertValues, singleType, db);
 
-        insertValues = new ContentValues();
         singleType[0] = "fighting";
-        insertValues.put(TYPE_COLOR, "#ff8566");
-        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+        insertEachColorIntoTable("#ff8566", insertValues, singleType, db);
 
-        insertValues = new ContentValues();
         singleType[0] = "water";
-        insertValues.put(TYPE_COLOR, "#b3d1ff");
-        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+        insertEachColorIntoTable("#b3d1ff", insertValues, singleType, db);
 
-        insertValues = new ContentValues();
         singleType[0] = "fire";
-        insertValues.put(TYPE_COLOR, "#ffa366");
-        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+        insertEachColorIntoTable("#ffa366", insertValues, singleType, db);
 
-        insertValues = new ContentValues();
         singleType[0] = "grass";
-        insertValues.put(TYPE_COLOR, "#b3e6cc");
-        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+        insertEachColorIntoTable("#b3e6cc", insertValues, singleType, db);
 
-        insertValues = new ContentValues();
         singleType[0] = "electric";
-        insertValues.put(TYPE_COLOR, "#ffff4d");
-        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+        insertEachColorIntoTable("#ffff4d", insertValues, singleType, db);
 
-        insertValues = new ContentValues();
         singleType[0] = "ice";
-        insertValues.put(TYPE_COLOR, "#ccffff");
-        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+        insertEachColorIntoTable("#ccffff", insertValues, singleType, db);
 
-        insertValues = new ContentValues();
         singleType[0] = "bug";
-        insertValues.put(TYPE_COLOR, "#ccffb3");
-        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+        insertEachColorIntoTable("#ccffb3", insertValues, singleType, db);
 
-        insertValues = new ContentValues();
         singleType[0] = "flying";
-        insertValues.put(TYPE_COLOR, "#e6f7ff");
-        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+        insertEachColorIntoTable("#e6f7ff", insertValues, singleType, db);
 
-        insertValues = new ContentValues();
         singleType[0] = "ghost";
-        insertValues.put(TYPE_COLOR, "#dab3ff");
-        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+        insertEachColorIntoTable("#dab3ff", insertValues, singleType, db);
 
-        insertValues = new ContentValues();
         singleType[0] = "rock";
-        insertValues.put(TYPE_COLOR, "#d9d9d9");
-        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+        insertEachColorIntoTable("#d9d9d9", insertValues, singleType, db);
 
-        insertValues = new ContentValues();
         singleType[0] = "ground";
-        insertValues.put(TYPE_COLOR, "#e6cbb3");
-        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+        insertEachColorIntoTable("#e6cbb3", insertValues, singleType, db);
 
-        insertValues = new ContentValues();
         singleType[0] = "dragon";
-        insertValues.put(TYPE_COLOR, "#8080ff");
-        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+        insertEachColorIntoTable("#8080ff", insertValues, singleType, db);
 
-        insertValues = new ContentValues();
         singleType[0] = "fairy";
-        insertValues.put(TYPE_COLOR, "#ffccff");
-        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+        insertEachColorIntoTable("#ffccff", insertValues, singleType, db);
 
-        insertValues = new ContentValues();
         singleType[0] = "dark";
-        insertValues.put(TYPE_COLOR, "#958884");
-        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+        insertEachColorIntoTable("#958884", insertValues, singleType, db);
 
-        insertValues = new ContentValues();
         singleType[0] = "psychic";
-        insertValues.put(TYPE_COLOR, "#ff66a3");
-        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+        insertEachColorIntoTable("#ff66a3", insertValues, singleType, db);
 
-        insertValues = new ContentValues();
         singleType[0] = "steel";
-        insertValues.put(TYPE_COLOR, "#e6e6e6");
-        db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
+        insertEachColorIntoTable("#e6e6e6", insertValues, singleType, db);
 
-        insertValues = new ContentValues();
         singleType[0] = "poison";
-        insertValues.put(TYPE_COLOR, "#d966ff");
+        insertEachColorIntoTable("#d966ff", insertValues, singleType, db);
+
+    }
+
+    private void insertEachColorIntoTable(String color, ContentValues insertValues, String[] singleType, SQLiteDatabase db) {
+        insertValues = new ContentValues();
+        insertValues.put(TYPE_COLOR, color);
         db.update(TYPE_TABLE_NAME, insertValues, "Name = ?", singleType);
     }
 
+    class PokemonAdapter extends ArrayAdapter<Pokemon> {
+        private ArrayList<Pokemon> list;
+
+        public PokemonAdapter(@NonNull Context context, int resource, @NonNull ArrayList<Pokemon> pokemon) {
+            super(context, resource, pokemon);
+            this.list = pokemon;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            View v = convertView;
+            if (v == null) {
+                LayoutInflater vi = (LayoutInflater)mainActivity.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+                v = vi.inflate(R.layout.list_item, null);
+            }
+            Pokemon p = list.get(position);
+            if (p != null) {
+                String color = p.getColor();
+                v.setBackgroundColor(Color.parseColor(color));
+                TextView entry = (TextView) v.findViewById(R.id.tvEntry);
+                TextView name = (TextView) v.findViewById(R.id.tvName);
+                TextView type = (TextView) v.findViewById(R.id.tvType);
+                TextView hp = (TextView) v.findViewById(R.id.tvHP);
+                TextView atk = (TextView) v.findViewById(R.id.tvAtk);
+                TextView def = (TextView) v.findViewById(R.id.tvDef);
+                TextView spAtk = (TextView) v.findViewById(R.id.tvSpAtk);
+                TextView spDef = (TextView) v.findViewById(R.id.tvSpDef);
+                TextView spe = (TextView) v.findViewById(R.id.tvSpe);
+                ImageView image = (ImageView) v.findViewById(R.id.imageViewPokemon);
+                if (entry != null) {
+                    entry.setText(String.valueOf(p.getEntry()));
+                }
+                if (name != null) {
+                    String capitalizedName = p.getName().substring(0,1).toUpperCase() + p.getName().substring(1);
+                    if (p.getName().equals("mr-mime"))
+                        capitalizedName = "Mr. Mime";
+                    name.setText(capitalizedName);
+                }
+                if (type != null) {
+                    String type1, type2;
+                    if (p.getTypes().length > 1) {
+                        type1 = p.getTypes()[1].substring(0,1).toUpperCase() + p.getTypes()[1].substring(1);
+                        type2 = p.getTypes()[0].substring(0,1).toUpperCase() + p.getTypes()[0].substring(1);
+                        type.setText(type1 + ", " + type2);
+                    }
+                    else {
+                        type1 = p.getTypes()[0].substring(0,1).toUpperCase() + p.getTypes()[0].substring(1);
+                        type.setText(type1);
+                    }
+                }
+                if (hp != null) {
+                    hp.setText(String.valueOf(p.getHp()));
+                }
+                if (atk != null) {
+                    atk.setText(String.valueOf(p.getAtk()));
+                }
+                if (def != null) {
+                    def.setText(String.valueOf(p.getDef()));
+                }
+                if (spAtk != null) {
+                    spAtk.setText(String.valueOf(p.getSpAtk()));
+                }
+                if (spDef != null) {
+                    spDef.setText(String.valueOf(p.getSpDef()));
+                }
+                if (spe != null) {
+                    spe.setText(String.valueOf(p.getSpe()));
+                }
+                if (image != null) {
+                    String pknName = p.getName();
+
+                    switch (pknName) {
+                        case "nidoran-m":
+                            pknName = "nidoranm";
+                            break;
+                        case "Nidoran-f":
+                            pknName = "nidoranf";
+                            break;
+                        case "mr-mime":
+                            pknName = "mrmime";
+                            break;
+                    }
+
+                    Glide
+                        .with(getContext())
+                        .load("http://play.pokemonshowdown.com/sprites/xyani/" + pknName + ".gif")
+                        .asGif()
+                        .error(R.drawable.pokeball)
+                        .into(image);
+                }
+            }
+            return v;
+        }
+    }
 }
